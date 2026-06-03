@@ -351,7 +351,7 @@
       </svg>
     </div>
     <h1>Envio de Documentos</h1>
-    <p>Preencha o formulário e anexe o documento para envio.</p>
+    <p>Preencha o formulário e anexe a CNH para envio.</p>
   </div>
 
   <div id="alertSuccess" class="alert alert-success" role="alert">
@@ -361,8 +361,8 @@
       </svg>
     </span>
     <div>
-      <strong>Documento enviado com sucesso!</strong>
-      Seu documento foi recebido e está sendo processado. Obrigado!
+      <strong>CNH enviada com sucesso!</strong>
+      Sua CNH foi recebida e está sendo processada. Obrigado!
     </div>
   </div>
 
@@ -436,7 +436,7 @@
       <div class="divider"></div>
 
       <div class="form-group">
-        <label>Documento <span class="required">*</span></label>
+        <label>CNH <span class="required">*</span></label>
         <div class="drop-zone" id="dropZone">
           <input type="file" id="arquivo" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt" />
           <div class="drop-icon">
@@ -452,7 +452,7 @@
         <div class="size-warning" id="sizeWarning">
           O arquivo excede o limite de 4 MB. Selecione um arquivo menor.
         </div>
-        <span class="field-error" id="arquivo-error">Selecione um documento para enviar.</span>
+        <span class="field-error" id="arquivo-error">Selecione a CNH para enviar.</span>
 
         <div class="file-preview" id="filePreview">
           <div class="file-icon">
@@ -474,6 +474,44 @@
         </div>
       </div>
 
+      <div class="form-group">
+        <label>Histórico da CNH</label>
+        <div class="drop-zone" id="dropZoneHistorico">
+          <input type="file" id="arquivoHistorico" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt" />
+          <div class="drop-icon">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+              <polyline points="16 16 12 12 8 16"/>
+              <line x1="12" y1="12" x2="12" y2="21"/>
+              <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+            </svg>
+          </div>
+          <p><strong>Clique para selecionar</strong> ou arraste aqui</p>
+          <p class="formats">PDF, Word, Excel, imagens — máx. 4 MB</p>
+        </div>
+        <div class="size-warning" id="sizeWarningHistorico">
+          O arquivo excede o limite de 4 MB. Selecione um arquivo menor.
+        </div>
+
+        <div class="file-preview" id="filePreviewHistorico">
+          <div class="file-icon">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </div>
+          <div class="file-info">
+            <div class="file-name" id="fileNameHistorico"></div>
+            <div class="file-size" id="fileSizeHistorico"></div>
+          </div>
+          <button type="button" class="remove-btn" id="removeFileHistorico" title="Remover arquivo">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
       <button type="submit" class="submit-btn" id="submitBtn">
         <div class="spinner"></div>
         <span class="btn-text">
@@ -481,7 +519,7 @@
             <line x1="22" y1="2" x2="11" y2="13"/>
             <polygon points="22 2 15 22 11 13 2 9 22 2"/>
           </svg>
-          Enviar Documento
+          Enviar CNH
         </span>
       </button>
 
@@ -505,6 +543,15 @@
   const sizeWarning = document.getElementById('sizeWarning');
   let selectedFile = null;
 
+  const dropZoneHistorico = document.getElementById('dropZoneHistorico');
+  const fileInputHistorico = document.getElementById('arquivoHistorico');
+  const filePreviewHistorico = document.getElementById('filePreviewHistorico');
+  const fileNameHistoricoEl = document.getElementById('fileNameHistorico');
+  const fileSizeHistoricoEl = document.getElementById('fileSizeHistorico');
+  const removeBtnHistorico = document.getElementById('removeFileHistorico');
+  const sizeWarningHistorico = document.getElementById('sizeWarningHistorico');
+  let selectedFileHistorico = null;
+
   function formatSize(bytes) {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
@@ -527,6 +574,20 @@
     fileInput.classList.remove('error');
   }
 
+  function setFileHistorico(file) {
+    sizeWarningHistorico.classList.remove('visible');
+    if (file.size > MAX_SIZE) {
+      sizeWarningHistorico.classList.add('visible');
+      selectedFileHistorico = null;
+      filePreviewHistorico.classList.remove('visible');
+      return;
+    }
+    selectedFileHistorico = file;
+    fileNameHistoricoEl.textContent = file.name;
+    fileSizeHistoricoEl.textContent = formatSize(file.size);
+    filePreviewHistorico.classList.add('visible');
+  }
+
   fileInput.addEventListener('change', () => {
     if (fileInput.files[0]) setFile(fileInput.files[0]);
   });
@@ -538,6 +599,17 @@
     sizeWarning.classList.remove('visible');
   });
 
+  fileInputHistorico.addEventListener('change', () => {
+    if (fileInputHistorico.files[0]) setFileHistorico(fileInputHistorico.files[0]);
+  });
+
+  removeBtnHistorico.addEventListener('click', () => {
+    selectedFileHistorico = null;
+    fileInputHistorico.value = '';
+    filePreviewHistorico.classList.remove('visible');
+    sizeWarningHistorico.classList.remove('visible');
+  });
+
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
   dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
   dropZone.addEventListener('drop', e => {
@@ -545,6 +617,15 @@
     dropZone.classList.remove('dragover');
     const file = e.dataTransfer.files[0];
     if (file) { fileInput.files = e.dataTransfer.files; setFile(file); }
+  });
+
+  dropZoneHistorico.addEventListener('dragover', e => { e.preventDefault(); dropZoneHistorico.classList.add('dragover'); });
+  dropZoneHistorico.addEventListener('dragleave', () => dropZoneHistorico.classList.remove('dragover'));
+  dropZoneHistorico.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZoneHistorico.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) { fileInputHistorico.files = e.dataTransfer.files; setFileHistorico(file); }
   });
 
   function showError(id, msg) {
@@ -601,6 +682,16 @@
         reader.readAsDataURL(selectedFile);
       });
 
+      let base64Historico = null;
+      if (selectedFileHistorico) {
+        base64Historico = await new Promise((resolve, reject) => {
+          const r2 = new FileReader();
+          r2.onload = () => resolve(r2.result.split(',')[1]);
+          r2.onerror = reject;
+          r2.readAsDataURL(selectedFileHistorico);
+        });
+      }
+
       const payload = {
         nome: document.getElementById('nome').value.trim(),
         email: document.getElementById('email').value.trim(),
@@ -609,6 +700,11 @@
         arquivo: base64,
         nomeArquivo: selectedFile.name,
         mimeType: selectedFile.type || 'application/octet-stream',
+        ...(base64Historico && {
+          arquivoHistorico: base64Historico,
+          nomeArquivoHistorico: selectedFileHistorico.name,
+          mimeTypeHistorico: selectedFileHistorico.type || 'application/octet-stream',
+        }),
       };
 
       const res = await fetch('/.netlify/functions/upload', {
@@ -624,6 +720,8 @@
       form.reset();
       selectedFile = null;
       filePreview.classList.remove('visible');
+      selectedFileHistorico = null;
+      filePreviewHistorico.classList.remove('visible');
       document.getElementById('alertSuccess').classList.add('visible');
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
