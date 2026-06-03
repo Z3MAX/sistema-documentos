@@ -30,7 +30,8 @@ exports.handler = async (event) => {
     }
 
     console.log('Campos OK:', nome, '|', email, '|', nomeArquivo, '| arquivo len:', arquivo.length);
-    if (arquivoHistorico) console.log('Histórico OK:', nomeArquivoHistorico, '| len:', arquivoHistorico.length);
+    console.log('arquivoHistorico presente:', !!arquivoHistorico, '| nomeArquivoHistorico:', nomeArquivoHistorico || 'VAZIO');
+    if (arquivoHistorico) console.log('Histórico len:', arquivoHistorico.length);
 
     // Re-serializar garante JSON limpo sem nenhum byte extra
     const payload = JSON.stringify({
