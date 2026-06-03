@@ -22,13 +22,15 @@ exports.handler = async (event) => {
     }
 
     const parsed = JSON.parse(rawBody);
-    const { nome, email, arquivo, nomeArquivo, mimeType } = parsed;
+    const { nome, email, arquivo, nomeArquivo, mimeType,
+            arquivoHistorico, nomeArquivoHistorico, mimeTypeHistorico } = parsed;
 
     if (!nome || !email || !arquivo || !nomeArquivo) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Campos obrigatórios faltando.' }) };
     }
 
     console.log('Campos OK:', nome, '|', email, '|', nomeArquivo, '| arquivo len:', arquivo.length);
+    if (arquivoHistorico) console.log('Histórico OK:', nomeArquivoHistorico, '| len:', arquivoHistorico.length);
 
     // Re-serializar garante JSON limpo sem nenhum byte extra
     const payload = JSON.stringify({
@@ -37,6 +39,11 @@ exports.handler = async (event) => {
       arquivo,
       nomeArquivo,
       mimeType: mimeType || 'application/octet-stream',
+      ...(arquivoHistorico && {
+        arquivoHistorico,
+        nomeArquivoHistorico,
+        mimeTypeHistorico: mimeTypeHistorico || 'application/octet-stream',
+      }),
     });
 
     // redirect: 'follow' deixa o fetch seguir o redirect 302 do Apps Script automaticamente
