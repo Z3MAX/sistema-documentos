@@ -1,6 +1,10 @@
 const SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL;
 
-async function postToScript(payload) {
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function postToScriptOnce(payload) {
   const response = await fetch(SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
@@ -8,8 +12,30 @@ async function postToScript(payload) {
     redirect: 'follow',
   });
   const text = await response.text();
-  console.log('Resposta Apps Script:', text.substring(0, 400));
-  return JSON.parse(text);
+  const trimmed = text.trim();
+
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    console.error('Resposta não-JSON do Apps Script:', trimmed.substring(0, 400));
+    throw new Error('Resposta inesperada do Apps Script (não é JSON).');
+  }
+
+  console.log('Resposta Apps Script:', trimmed.substring(0, 400));
+  return JSON.parse(trimmed);
+}
+
+// O Apps Script ocasionalmente devolve uma página de erro HTML do Google
+// em vez do JSON esperado (falha transitória do lado do Google). Tenta
+// novamente antes de desistir.
+async function postToScript(payload, retries = 2, baseDelayMs = 1000) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await postToScriptOnce(payload);
+    } catch (err) {
+      if (attempt === retries) throw err;
+      console.warn(`Tentativa ${attempt + 1} falhou (${err.message}), tentando novamente...`);
+      await sleep(baseDelayMs * (attempt + 1));
+    }
+  }
 }
 
 exports.handler = async (event) => {
@@ -43,33 +69,43 @@ exports.handler = async (event) => {
     console.log('CNH:', nomeArquivo, '| len:', arquivo.length);
     console.log('Histórico presente:', !!arquivoHistorico, '|', nomeArquivoHistorico || 'nenhum');
 
-    // 1ª chamada — CNH
-    const data = await postToScript({
-      nome,
-      email,
-      arquivo,
-      nomeArquivo,
-      mimeType: mimeType || 'application/octet-stream',
-    });
+    const temHistorico = !!(arquivoHistorico && nomeArquivoHistorico);
 
-    if (!data || data.success !== true) {
-      return { statusCode: 500, headers, body: JSON.stringify(data || { error: 'Erro ao enviar CNH.' }) };
+    // CNH e Histórico são enviados em paralelo (chamadas separadas ao Apps
+    // Script para evitar payload único grande) para reduzir a duração total
+    // da function e a chance de esbarrar em falhas transitórias do Google.
+    const [cnhResult, histResult] = await Promise.allSettled([
+      postToScript({
+        nome,
+        email,
+        arquivo,
+        nomeArquivo,
+        mimeType: mimeType || 'application/octet-stream',
+      }),
+      temHistorico
+        ? postToScript({
+            nome,
+            email,
+            arquivo: arquivoHistorico,
+            nomeArquivo: `HISTORICO_${nomeArquivoHistorico}`,
+            mimeType: mimeTypeHistorico || 'application/octet-stream',
+          })
+        : Promise.resolve(null),
+    ]);
+
+    if (cnhResult.status === 'rejected') {
+      console.error('Erro ao enviar CNH:', cnhResult.reason.message);
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Erro ao enviar CNH.' }) };
+    }
+    if (!cnhResult.value || cnhResult.value.success !== true) {
+      return { statusCode: 500, headers, body: JSON.stringify(cnhResult.value || { error: 'Erro ao enviar CNH.' }) };
     }
 
-    // 2ª chamada — Histórico da CNH (separada para evitar payload grande)
-    if (arquivoHistorico && nomeArquivoHistorico) {
-      console.log('Enviando histórico ao Apps Script...');
-      try {
-        await postToScript({
-          nome,
-          email,
-          arquivo: arquivoHistorico,
-          nomeArquivo: `HISTORICO_${nomeArquivoHistorico}`,
-          mimeType: mimeTypeHistorico || 'application/octet-stream',
-        });
+    if (temHistorico) {
+      if (histResult.status === 'rejected') {
+        console.error('Erro ao enviar histórico:', histResult.reason.message);
+      } else {
         console.log('Histórico enviado com sucesso.');
-      } catch (histErr) {
-        console.error('Erro ao enviar histórico:', histErr.message);
       }
     }
 
